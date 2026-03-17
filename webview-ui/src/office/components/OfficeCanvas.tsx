@@ -21,6 +21,7 @@ import type {
   SelectionRenderState,
 } from '../engine/renderer.js';
 import { renderFrame } from '../engine/renderer.js';
+import { clearSpriteCache } from '../sprites/spriteCache.js';
 import { getCatalogEntry, isRotatable } from '../layout/furnitureCatalog.js';
 import { EditTool, TILE_SIZE } from '../types.js';
 
@@ -279,6 +280,7 @@ export function OfficeCanvas({
     return () => {
       stop();
       observer.disconnect();
+      clearSpriteCache();
     };
   }, [officeState, resizeCanvas, isEditMode, editorState, _editorTick, zoom, panRef]);
 
@@ -759,8 +761,9 @@ export function OfficeCanvas({
   );
 
   // Wheel: Ctrl+wheel to zoom, plain wheel/trackpad to pan
+  // Uses ref-based addEventListener with { passive: false } so preventDefault() works
   const handleWheel = useCallback(
-    (e: React.WheelEvent) => {
+    (e: WheelEvent) => {
       e.preventDefault();
       if (e.ctrlKey || e.metaKey) {
         // Accumulate scroll delta, step zoom when threshold crossed
@@ -786,6 +789,16 @@ export function OfficeCanvas({
     [zoom, onZoomChange, officeState, panRef, clampPan],
   );
 
+  // Register wheel listener with { passive: false } so preventDefault() is not ignored
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvas.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      canvas.removeEventListener('wheel', handleWheel);
+    };
+  }, [handleWheel]);
+
   // Prevent default middle-click browser behavior (auto-scroll)
   const handleAuxClick = useCallback((e: React.MouseEvent) => {
     if (e.button === 1) e.preventDefault();
@@ -810,7 +823,6 @@ export function OfficeCanvas({
         onClick={handleClick}
         onAuxClick={handleAuxClick}
         onMouseLeave={handleMouseLeave}
-        onWheel={handleWheel}
         onContextMenu={handleContextMenu}
         style={{ display: 'block' }}
       />

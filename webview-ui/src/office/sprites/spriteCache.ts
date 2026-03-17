@@ -45,6 +45,11 @@ export function getOutlineSprite(sprite: SpriteData): SpriteData {
   return outline;
 }
 
+/** Clear all zoom-level caches (call on component unmount to prevent unbounded growth) */
+export function clearSpriteCache(): void {
+  zoomCaches.clear();
+}
+
 export function getCachedSprite(sprite: SpriteData, zoom: number): HTMLCanvasElement {
   let cache = zoomCaches.get(zoom);
   if (!cache) {

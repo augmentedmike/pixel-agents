@@ -280,9 +280,15 @@ export function OfficeCanvas({
     return () => {
       stop();
       observer.disconnect();
-      clearSpriteCache();
     };
   }, [officeState, resizeCanvas, isEditMode, editorState, _editorTick, zoom, panRef]);
+
+  // Clear sprite cache on true component unmount only (not on every dep change)
+  useEffect(() => {
+    return () => {
+      clearSpriteCache();
+    };
+  }, []);
 
   // Convert CSS mouse coords to world (sprite pixel) coords
   const screenToWorld = useCallback(

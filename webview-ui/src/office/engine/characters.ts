@@ -52,8 +52,9 @@ export function createCharacter(
   seat: Seat | null,
   hueShift = 0,
 ): Character {
-  const col = seat ? seat.seatCol : 1;
-  const row = seat ? seat.seatRow : 1;
+  // Position is overridden by the caller when seat is null — (0,0) is just a placeholder
+  const col = seat ? seat.seatCol : 0;
+  const row = seat ? seat.seatRow : 0;
   const center = tileCenter(col, row);
   return {
     id,

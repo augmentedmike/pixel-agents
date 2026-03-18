@@ -21,7 +21,7 @@ import {
   layoutToSeats,
   layoutToTileMap,
 } from '../layout/layoutSerializer.js';
-import { findPath, getWalkableTiles, isWalkable } from '../layout/tileMap.js';
+import { findPath, getSpawnTiles, getWalkableTiles, isWalkable } from '../layout/tileMap.js';
 import type {
   Character,
   FurnitureInstance,
@@ -41,6 +41,8 @@ export class OfficeState {
   blockedTiles: Set<string>;
   furniture: FurnitureInstance[];
   walkableTiles: Array<{ col: number; row: number }>;
+  /** Tiles painted as SPAWN_ZONE — preferred spawn points. Falls back to walkableTiles if empty. */
+  spawnTiles: Array<{ col: number; row: number }> = [];
   characters: Map<number, Character> = new Map();
   /** Accumulated time for furniture animation frame cycling */
   furnitureAnimTimer = 0;
@@ -61,6 +63,12 @@ export class OfficeState {
     this.blockedTiles = getBlockedTiles(this.layout.furniture);
     this.furniture = layoutToFurnitureInstances(this.layout.furniture);
     this.walkableTiles = getWalkableTiles(this.tileMap, this.blockedTiles);
+    this.spawnTiles = getSpawnTiles(this.tileMap, this.blockedTiles);
+  }
+
+  /** Tiles to use for spawning — painted spawn zones, or all walkable tiles as fallback */
+  private getEffectiveSpawnTiles(): Array<{ col: number; row: number }> {
+    return this.spawnTiles.length > 0 ? this.spawnTiles : this.walkableTiles;
   }
 
   /** Rebuild all derived state from a new layout. Reassigns existing characters.
@@ -72,6 +80,7 @@ export class OfficeState {
     this.blockedTiles = getBlockedTiles(layout.furniture);
     this.rebuildFurnitureInstances();
     this.walkableTiles = getWalkableTiles(this.tileMap, this.blockedTiles);
+    this.spawnTiles = getSpawnTiles(this.tileMap, this.blockedTiles);
 
     // Shift character positions when grid expands left/up
     if (shift && (shift.col !== 0 || shift.row !== 0)) {
@@ -134,17 +143,19 @@ export class OfficeState {
         ch.tileCol < 0 ||
         ch.tileCol >= layout.cols ||
         ch.tileRow < 0 ||
-        ch.tileRow >= layout.rows
+        ch.tileRow >= layout.rows ||
+        !isWalkable(ch.tileCol, ch.tileRow, this.tileMap, this.blockedTiles)
       ) {
         this.relocateCharacterToWalkable(ch);
       }
     }
   }
 
-  /** Move a character to a random walkable tile */
+  /** Move a character to a random spawn tile (spawn zone if painted, else any walkable tile) */
   private relocateCharacterToWalkable(ch: Character): void {
-    if (this.walkableTiles.length === 0) return;
-    const spawn = this.walkableTiles[Math.floor(Math.random() * this.walkableTiles.length)];
+    const spawnPool = this.getEffectiveSpawnTiles();
+    if (spawnPool.length === 0) return;
+    const spawn = spawnPool[Math.floor(Math.random() * spawnPool.length)];
     ch.tileCol = spawn.col;
     ch.tileRow = spawn.row;
     ch.x = spawn.col * TILE_SIZE + TILE_SIZE / 2;
@@ -247,11 +258,12 @@ export class OfficeState {
       seat.assigned = true;
       ch = createCharacter(id, palette, seatId, seat, hueShift);
     } else {
-      // No seats — spawn at random walkable tile
+      // No seats — spawn inside painted spawn zone (or random walkable tile as fallback)
+      const spawnPool = this.getEffectiveSpawnTiles();
       const spawn =
-        this.walkableTiles.length > 0
-          ? this.walkableTiles[Math.floor(Math.random() * this.walkableTiles.length)]
-          : { col: 1, row: 1 };
+        spawnPool.length > 0
+          ? spawnPool[Math.floor(Math.random() * spawnPool.length)]
+          : { col: 0, row: 0 };
       ch = createCharacter(id, palette, null, null, hueShift);
       ch.x = spawn.col * TILE_SIZE + TILE_SIZE / 2;
       ch.y = spawn.row * TILE_SIZE + TILE_SIZE / 2;
@@ -413,15 +425,16 @@ export class OfficeState {
       seat.assigned = true;
       ch = createCharacter(id, palette, bestSeatId, seat, hueShift);
     } else {
-      // No seats — spawn at closest walkable tile to parent
-      let spawn = { col: 1, row: 1 };
-      if (this.walkableTiles.length > 0) {
-        let closest = this.walkableTiles[0];
+      // No seats — spawn at closest spawn-zone tile to parent (fallback: any walkable)
+      const spawnPool = this.getEffectiveSpawnTiles();
+      let spawn = { col: 0, row: 0 };
+      if (spawnPool.length > 0) {
+        let closest = spawnPool[0];
         let closestDist = dist(closest.col, closest.row);
-        for (let i = 1; i < this.walkableTiles.length; i++) {
-          const d = dist(this.walkableTiles[i].col, this.walkableTiles[i].row);
+        for (let i = 1; i < spawnPool.length; i++) {
+          const d = dist(spawnPool[i].col, spawnPool[i].row);
           if (d < closestDist) {
-            closest = this.walkableTiles[i];
+            closest = spawnPool[i];
             closestDist = d;
           }
         }

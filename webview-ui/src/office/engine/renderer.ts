@@ -89,10 +89,11 @@ export function renderTileGrid(
         continue;
       }
 
-      // Floor tile: get colorized sprite
+      // Floor tile: get colorized sprite (SPAWN_ZONE renders as FLOOR_1 — green overlay added separately)
+      const floorTile = tile === TileType.SPAWN_ZONE ? TileType.FLOOR_1 : tile;
       const colorIdx = r * layoutCols + c;
       const color = tileColors?.[colorIdx] ?? { h: 0, s: 0, b: 0, c: 0 };
-      const sprite = getColorizedFloorSprite(tile, color);
+      const sprite = getColorizedFloorSprite(floorTile, color);
       const cached = getCachedSprite(sprite, zoom);
       ctx.drawImage(cached, offsetX + c * s, offsetY + r * s);
     }
@@ -286,6 +287,22 @@ export function renderGridOverlay(
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         if (tileMap[r]?.[c] === TileType.VOID) {
+          ctx.strokeRect(offsetX + c * s + 0.5, offsetY + r * s + 0.5, s - 1, s - 1);
+        }
+      }
+    }
+    ctx.restore();
+
+    // Draw green tint overlay on SPAWN_ZONE tiles
+    ctx.save();
+    ctx.fillStyle = 'rgba(80, 220, 120, 0.22)';
+    ctx.strokeStyle = 'rgba(80, 220, 120, 0.55)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([]);
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (tileMap[r]?.[c] === TileType.SPAWN_ZONE) {
+          ctx.fillRect(offsetX + c * s, offsetY + r * s, s, s);
           ctx.strokeRect(offsetX + c * s + 0.5, offsetY + r * s + 0.5, s - 1, s - 1);
         }
       }

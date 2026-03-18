@@ -3,7 +3,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { getColorizedSprite } from '../colorize.js';
 import { getColorizedFloorSprite, getFloorPatternCount, hasFloorSprites } from '../floorTiles.js';
 import type { FurnitureCategory, LoadedAssetData } from '../layout/furnitureCatalog.js';
-import { getWallSetCount, getWallSetPreviewSprite } from '../wallTiles.js';
 import {
   buildDynamicCatalog,
   getActiveCategories,
@@ -11,7 +10,8 @@ import {
 } from '../layout/furnitureCatalog.js';
 import { getCachedSprite } from '../sprites/spriteCache.js';
 import type { FloorColor, TileType as TileTypeVal } from '../types.js';
-import { EditTool } from '../types.js';
+import { EditTool, TileType } from '../types.js';
+import { getWallSetCount, getWallSetPreviewSprite } from '../wallTiles.js';
 
 const btnStyle: React.CSSProperties = {
   padding: '3px 8px',
@@ -448,6 +448,31 @@ export function EditorToolbar({
                 onClick={() => onTileTypeChange(patIdx as TileTypeVal)}
               />
             ))}
+            {/* Spawn zone tile */}
+            <button
+              onClick={() => onTileTypeChange(TileType.SPAWN_ZONE as TileTypeVal)}
+              title="Spawn zone — characters spawn inside painted area"
+              style={{
+                width: 32,
+                height: 32,
+                padding: 0,
+                border:
+                  selectedTileType === TileType.SPAWN_ZONE
+                    ? '2px solid #5a8cff'
+                    : '2px solid #4a4a6a',
+                borderRadius: 0,
+                cursor: 'pointer',
+                flexShrink: 0,
+                background: 'rgba(80, 200, 120, 0.25)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 16,
+                lineHeight: 1,
+              }}
+            >
+              🚀
+            </button>
           </div>
         </div>
       )}

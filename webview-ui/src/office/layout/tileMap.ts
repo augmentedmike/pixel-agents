@@ -34,6 +34,28 @@ export function getWalkableTiles(
   return tiles;
 }
 
+/**
+ * Get tiles painted as SPAWN_ZONE.
+ * These are used as preferred spawn points when characters enter the office.
+ * Falls back to all walkable tiles if none are painted.
+ */
+export function getSpawnTiles(
+  tileMap: TileType[][],
+  blockedTiles: Set<string>,
+): Array<{ col: number; row: number }> {
+  const rows = tileMap.length;
+  const cols = rows > 0 ? tileMap[0].length : 0;
+  const tiles: Array<{ col: number; row: number }> = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (tileMap[r][c] === TileType.SPAWN_ZONE && !blockedTiles.has(`${c},${r}`)) {
+        tiles.push({ col: c, row: r });
+      }
+    }
+  }
+  return tiles;
+}
+
 /** BFS pathfinding on 4-connected grid (no diagonals). Returns path excluding start, including end. */
 export function findPath(
   startCol: number,
